@@ -41,8 +41,7 @@ const AdminDashboard = () => {
   const handleEventDrop = async ({ event }) => {
     try {
       await api.events.update(event.id, {
-        start: event.start,
-        end: event.end
+        dateTime: event.start.toISOString()
       });
       toast.success('Lesson time updated successfully');
     } catch (error) {
@@ -60,8 +59,7 @@ const AdminDashboard = () => {
 
   const handleDateSelect = (selectInfo) => {
     setSelectedLesson({
-      date: selectInfo.startStr.split('T')[0],
-      time: selectInfo.startStr.split('T')[1].substring(0, 5),
+      dateTime: selectInfo.startStr,
       duration: 60 // default duration
     });
     setShowLessonForm(true);
@@ -104,7 +102,7 @@ const AdminDashboard = () => {
 
   const handleAssignRider = async (lessonId, riderUsername) => {
     try {
-      const response = await api.lessons.assignRider(lessonId, riderUsername);
+      const response = await api.lessons.assignRider(lessonId, { riderUsername });
       setLessons(lessons.map(lesson =>
         lesson.id === lessonId ? response.data : lesson
       ));
@@ -114,9 +112,9 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleUnassignRider = async (lessonId, riderUsername) => {
+  const handleUnassignRider = async (lessonId) => {
     try {
-      const response = await api.lessons.unassignRider(lessonId, riderUsername);
+      const response = await api.lessons.unassignRider(lessonId);
       setLessons(lessons.map(lesson =>
         lesson.id === lessonId ? response.data : lesson
       ));
@@ -171,15 +169,13 @@ const AdminDashboard = () => {
                   weekends={true}
                   events={lessons.map(lesson => ({
                     id: lesson.id,
-                    title: lesson.name,
-                    start: `${lesson.date}T${lesson.time}`,
-                    end: (() => {
-                      const start = new Date(`${lesson.date}T${lesson.time}`);
-                      return new Date(start.getTime() + lesson.duration * 60000).toISOString();
-                    })(),
+                    title: `${lesson.name}${lesson.assignedRider ? ` - ${lesson.assignedRider}` : ''}`,
+                    start: lesson.dateTime,
+                    end: new Date(new Date(lesson.dateTime).getTime() + lesson.duration * 60000).toISOString(),
                     extendedProps: {
                       description: lesson.description,
-                      assignedRiders: lesson.assignedRiders
+                      assignedRider: lesson.assignedRider,
+                      imagePath: lesson.imagePath
                     }
                   }))}
                   eventDrop={handleEventDrop}
