@@ -1,0 +1,13 @@
+{
+  "name": "riding-school-portal",
+  "version": "1.0.0",
+  "description": "A web application for managing riding school lessons and schedules",
+  "scripts": {
+    "start": "concurrently \"cd server && npm run dev\" \"cd client && npm start\"",
+    "install-deps": "concurrently \"cd server && npm install\" \"cd client && npm install\"",
+    "build": "cd client && npm run build"
+  },
+  "dependencies": {
+    "concurrently": "^8.0.1"
+  }
+}
