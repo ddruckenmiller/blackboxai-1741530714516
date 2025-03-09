@@ -5,10 +5,9 @@ const LessonForm = ({ lesson, riders, onSubmit, onDelete, onClose }) => {
   const [formData, setFormData] = useState({
     name: lesson?.name || '',
     description: lesson?.description || '',
-    date: lesson?.date || '',
-    time: lesson?.time || '',
+    dateTime: lesson?.dateTime || '',
     duration: lesson?.duration || 60,
-    assignedRiders: lesson?.assignedRiders ? Array.from(lesson.assignedRiders) : []
+    assignedRider: lesson?.assignedRider || null
   });
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState(lesson?.imagePath || null);
@@ -51,16 +50,13 @@ const LessonForm = ({ lesson, riders, onSubmit, onDelete, onClose }) => {
       toast.error('Name is required');
       return false;
     }
-    if (!formData.description.trim()) {
-      toast.error('Description is required');
+    if (!formData.dateTime) {
+      toast.error('Date and time are required');
       return false;
     }
-    if (!formData.date) {
-      toast.error('Date is required');
-      return false;
-    }
-    if (!formData.time) {
-      toast.error('Time is required');
+    // Validate that dateTime is not in the past
+    if (new Date(formData.dateTime) < new Date()) {
+      toast.error('Cannot schedule lessons in the past');
       return false;
     }
     if (!formData.duration || formData.duration < 15 || formData.duration > 180) {
@@ -79,12 +75,11 @@ const LessonForm = ({ lesson, riders, onSubmit, onDelete, onClose }) => {
       const formDataToSubmit = new FormData();
       formDataToSubmit.append('name', formData.name);
       formDataToSubmit.append('description', formData.description);
-      formDataToSubmit.append('date', formData.date);
-      formDataToSubmit.append('time', formData.time);
+      formDataToSubmit.append('dateTime', formData.dateTime);
       formDataToSubmit.append('duration', formData.duration);
-      formData.assignedRiders.forEach(rider => {
-        formDataToSubmit.append('assignedRiders[]', rider);
-      });
+      if (formData.assignedRider) {
+        formDataToSubmit.append('assignedRider', formData.assignedRider);
+      }
 
       if (fileInputRef.current?.files[0]) {
         formDataToSubmit.append('image', fileInputRef.current.files[0]);
@@ -150,26 +145,12 @@ const LessonForm = ({ lesson, riders, onSubmit, onDelete, onClose }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Date
+                Date and Time
               </label>
               <input
-                type="date"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Time
-              </label>
-              <input
-                type="time"
-                name="time"
-                value={formData.time}
+                type="datetime-local"
+                name="dateTime"
+                value={formData.dateTime}
                 onChange={handleChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 required
@@ -234,23 +215,21 @@ const LessonForm = ({ lesson, riders, onSubmit, onDelete, onClose }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Assign Riders
+              Assign Rider
             </label>
             <select
-              multiple
-              value={formData.assignedRiders}
-              onChange={handleRiderSelection}
+              name="assignedRider"
+              value={formData.assignedRider || ''}
+              onChange={handleChange}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
+              <option value="">Select a rider</option>
               {riders.map(rider => (
                 <option key={rider.username} value={rider.username}>
                   {rider.username}
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-sm text-gray-500">
-              Hold Ctrl/Cmd to select multiple riders
-            </p>
           </div>
 
           <div className="flex justify-end space-x-3">
