@@ -42,9 +42,8 @@ const upload = multer({
 // Validation middleware
 const validateLesson = [
   body('name').trim().isLength({ min: 3 }).withMessage('Name must be at least 3 characters'),
-  body('description').trim().isLength({ min: 10 }).withMessage('Description must be at least 10 characters'),
-  body('date').isISO8601().withMessage('Valid date is required'),
-  body('time').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Valid time is required (HH:MM format)'),
+  body('description').trim().optional().isLength({ min: 10 }).withMessage('Description must be at least 10 characters'),
+  body('dateTime').isISO8601().withMessage('Valid date and time is required'),
   body('duration').isInt({ min: 15, max: 180 }).withMessage('Duration must be between 15 and 180 minutes')
 ];
 
@@ -61,20 +60,18 @@ router.post('/',
         throw new ValidationError(errors.array()[0].msg);
       }
 
+      // Combine date and time into a single dateTime
       const lessonData = {
-        ...req.body,
+        name: req.body.name,
+        description: req.body.description,
+        dateTime: new Date(req.body.dateTime),
+        duration: parseInt(req.body.duration),
         imagePath: req.file ? `/uploads/lessons/${req.file.filename}` : null
       };
 
-      // Check for scheduling conflicts
-      const hasConflict = await Lesson.checkScheduleConflict(
-        lessonData.date,
-        lessonData.time,
-        lessonData.duration
-      );
-
-      if (hasConflict) {
-        throw new ValidationError('Time slot conflicts with an existing lesson');
+      // Validate dateTime is not in the past
+      if (lessonData.dateTime < new Date()) {
+        throw new ValidationError('Lesson cannot be scheduled in the past');
       }
 
       const lesson = await Lesson.create(lessonData);
@@ -97,24 +94,21 @@ router.put('/:id',
         throw new ValidationError(errors.array()[0].msg);
       }
 
+      // Prepare update data
       const lessonData = {
-        ...req.body
+        name: req.body.name,
+        description: req.body.description,
+        dateTime: new Date(req.body.dateTime),
+        duration: parseInt(req.body.duration)
       };
 
       if (req.file) {
         lessonData.imagePath = `/uploads/lessons/${req.file.filename}`;
       }
 
-      // Check for scheduling conflicts
-      const hasConflict = await Lesson.checkScheduleConflict(
-        lessonData.date,
-        lessonData.time,
-        lessonData.duration,
-        req.params.id
-      );
-
-      if (hasConflict) {
-        throw new ValidationError('Time slot conflicts with an existing lesson');
+      // Validate dateTime is not in the past
+      if (lessonData.dateTime < new Date()) {
+        throw new ValidationError('Lesson cannot be scheduled in the past');
       }
 
       const lesson = await Lesson.update(req.params.id, lessonData);
@@ -168,21 +162,7 @@ router.post('/:id/assign', authMiddleware, isAdmin, async (req, res, next) => {
       throw new ValidationError('Invalid rider username');
     }
 
-    const lesson = await Lesson.assignRider(req.params.id, riderUsername);
-
-    // Send email notification
-    try {
-      await sendLessonAssignmentEmail(rider.email, {
-        name: lesson.name,
-        description: lesson.description,
-        date: lesson.date,
-        time: lesson.time,
-        duration: lesson.duration
-      });
-    } catch (emailError) {
-      console.error('Failed to send email notification:', emailError);
-      // Continue with the assignment even if email fails
-    }
+    const lesson = await Lesson.assignRider(req.params.id, riderUsername, rider.email);
 
     res.json(lesson);
   } catch (error) {
@@ -206,6 +186,7 @@ router.post('/:id/unassign', authMiddleware, isAdmin, async (req, res, next) => 
 });
 
 // Get lessons for specific rider
+// Get lessons for specific rider
 router.get('/rider/:username', authMiddleware, async (req, res, next) => {
   try {
     // Verify access rights (admin or the rider themselves)
@@ -213,7 +194,7 @@ router.get('/rider/:username', authMiddleware, async (req, res, next) => {
       throw new ValidationError('Unauthorized access');
     }
 
-    const lessons = await Lesson.getLessonsForRider(req.params.username);
+    const lessons = await Lesson.getRiderLessons(req.params.username);
     res.json(lessons);
   } catch (error) {
     next(error);
