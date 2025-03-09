@@ -50,10 +50,8 @@ const lessons = {
   delete: (id) => api.delete(`/lessons/${id}`),
   getAll: () => api.get('/lessons'),
   getById: (id) => api.get(`/lessons/${id}`),
-  assignRider: (lessonId, riderUsername) => 
-    api.post(`/lessons/${lessonId}/assign`, { riderUsername }),
-  unassignRider: (lessonId, riderUsername) => 
-    api.post(`/lessons/${lessonId}/unassign`, { riderUsername }),
+  assignRider: (lessonId, data) => api.post(`/lessons/${lessonId}/assign`, data),
+  unassignRider: (lessonId) => api.post(`/lessons/${lessonId}/unassign`),
   getRiderLessons: (username) => api.get(`/lessons/rider/${username}`)
 };
 
@@ -61,8 +59,9 @@ const lessons = {
 const events = {
   getAll: () => api.get('/events'),
   update: (id, eventData) => api.put(`/events/${id}`, eventData),
-  getRange: (start, end) => 
-    api.get('/events/range', { params: { start, end } })
+  getRange: (start, end) => api.get('/events/range', { params: { start, end } }),
+  getRiderEvents: () => api.get('/events'),
+  getAdminEvents: () => api.get('/events')
 };
 
 // Helper functions
